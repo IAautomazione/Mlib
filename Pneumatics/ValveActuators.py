@@ -1,7 +1,7 @@
 from manim import *
 import numpy as np
 from numpy import pi
-from library.Mechanics.Spring import Compression_Spring as spr
+from Mlib.Mechanics.Spring import Compression_Spring as spr
 
 BLU_AUT = "#3349ff"
 ROSSO_AUT = "#df0000"
