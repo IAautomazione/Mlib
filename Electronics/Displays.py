@@ -1,7 +1,7 @@
 from manim import *
 import numpy as np
 from numpy import pi
-from library.Graphics.Colors import *
+from Mlib.Graphics.Colors import *
 
 """
 Author: Ivan Archetti   
