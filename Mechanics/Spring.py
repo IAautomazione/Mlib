@@ -1,11 +1,7 @@
 from manim import *
 import numpy as np
 from numpy import pi
-
-BLU_AUT = "#3349ff"
-ROSSO_AUT = "#df0000"
-VERDE_AUT = "#76f939"
-GIALLO_AUT = "#f3fd17"
+from Mlib.Graphics.Colors import *
 
 """
 Author: Ivan Archetti   
@@ -16,7 +12,7 @@ Collection of python classes of springs
 """
 
 
-#----------------------------------------------
+# ======================================================================================================================
 
 class Compression_Spring():
     arguments = {"fill_color": GREY_C,
@@ -121,6 +117,8 @@ class Compression_Spring():
         coil_angle = np.arctan(spring_lead/(d_ext-2*d_coil))
 
         body = self.set_spring_by_coil_angle(coil_angle=coil_angle)
+        
+        # update coil angle
         self.coil_angle = coil_angle
 
         return body
@@ -147,10 +145,11 @@ class Compression_Spring():
 
     # ----------------------------------------------------------------------------------------------------------------------        
 
-    def set_compression(self, shift_position=ORIGIN, perc_comp=0.5):    
+    def set_compression(self, perc_comp=0.5, animated=True, run_time=1):    
         """
         Set the compression of the spring
         perc_comp: percentage of the initial length
+        animeted: a flag that define whether is ina animation mode or in static mode
         """
         
         # initialization
@@ -162,16 +161,14 @@ class Compression_Spring():
 
         functions = []
 
-        # rescale the new angle ()
+        # rescale the new angle
         comp_angle = np.arcsin(perc_comp*np.sin(coil_angle))
+
         # calculate the vertical movement
         translation = (d_ext/2-d_coil)*np.tan(comp_angle) 
         
         # calculate the new position
-        position = translation*(u[0]*DOWN + u[1]*RIGHT) + shift_position #************ bisogna muovere anche il primo anello  ************
-
-        # define position of first coil (0)
-        functions.append(self.coils[0].animate().shift(shift_position))
+        position = translation*(u[0]*DOWN + u[1]*RIGHT)
 
         # define position from 1 to n coils
         for i, j in enumerate(self.coils[1:]):
@@ -179,7 +176,11 @@ class Compression_Spring():
                  comp_angle = 0
                  position = position - translation*(u[0]*DOWN + u[1]*RIGHT) 
                 
-            functions.append(j.animate().rotate(angle=-comp_angle).shift(position))
+            if animated:
+                functions.append(j.animate(run_time=run_time).rotate(angle=-comp_angle).shift(position))
+            else:
+                j.rotate(angle=-comp_angle).shift(position)
+
             position = position + 2*translation*(u[0]*DOWN + u[1]*RIGHT)
             comp_angle = -comp_angle
 

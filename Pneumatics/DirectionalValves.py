@@ -26,7 +26,8 @@ class Pneumatic_valve_5_2():
                  "valve_fill_color": GREY_A,
                  "actuator_fill_color": GREY_D}
 
-    def __init__(self, height=2, left_actuator_choice="Coil", right_actuator_choice="Compression spring",  visible_connections=False, **kwargs):
+    def __init__(self, height=2, left_actuator_choice="Coil", right_actuator_choice="Compression spring",  visible_connections=False, 
+                 actuated=False, **kwargs):
         """
         left_actuator, right_actuator: tags that determinate the type of actuator
                                        
@@ -41,6 +42,10 @@ class Pneumatic_valve_5_2():
         self.actuator_fill_color = self.arguments["actuator_fill_color"]
         self.left_actuator_choice = left_actuator_choice
         self.right_actuator_choice = right_actuator_choice
+        # postions and angles of each input/output of the pneumatic chamber
+        self.IN_OUT_positions = ((ORIGIN, DOWN/2), (RIGHT/4, UP/2), (RIGHT/4, DOWN/2), (LEFT/4, UP/2), (LEFT/4, DOWN/2))
+        self.IN_OUT_angles = (0, pi, 0, pi, 0)
+        self.actuated = actuated
          
         self.valve = VGroup()
         
@@ -67,6 +72,21 @@ class Pneumatic_valve_5_2():
 
         self.valve.add(self.left_actuator.actuator, self.left_chamber, self.right_chamber, self.right_actuator.actuator)
 
+
+    # ----------------------------------------------------------------------------------------------------------------------        
+
+    def dict_actuator(self):
+
+        dict_actuator = {"Coil" : 0,
+                         "Manual lever" : 1,
+                         "Push button" : 2,
+                         "Simple lever" : 3,
+                         "Roller lever" : 4,
+                         "Compression spring" : 5,
+                         "Pneumatic signal": 6}
+        
+        return dict_actuator
+
     # ----------------------------------------------------------------------------------------------------------------------    
 
     def set_chamber(self, connections=((1,1), (2,2), (3,3), (4,4), (5,5)), visible_connections=False):
@@ -81,23 +101,24 @@ class Pneumatic_valve_5_2():
 
         # initialization
         h = self.h
+        stroke_width = 2*h
         valve_stroke_color = self.valve_stroke_color
         valve_fill_color = self.valve_fill_color
         
         # set chamber volume
         chamber = VGroup()
-        chamber.add(Rectangle(width=h, height=h, color=valve_stroke_color, fill_color=valve_fill_color, fill_opacity=0.5))
+        chamber.add(Rectangle(width=h, height=h, color=valve_stroke_color, stroke_width=stroke_width, fill_color=valve_fill_color, fill_opacity=0.5))
 
         for connection in connections:
             start, angle = self.get_IN_OUT_positions(connection[0])
             end, angle = self.get_IN_OUT_positions(connection[1])
             # verify if an arrow is required
             if connection[0] != connection[1] and len(connection) == 2:
-                chamber.add(Arrow(start=start, end=end, stroke_width=3, max_tip_length_to_length_ratio=0.15, color=BLACK, buff=0))
+                chamber.add(Arrow(start=start, end=end, stroke_width=stroke_width, max_tip_length_to_length_ratio=0.15, color=BLACK, buff=0))
             # if there is no connection is blocked and add T connections
             elif connection[0] == connection[1]:
                 # set T connection when there is no air flow
-                T_connection = self.set_T_connection()
+                T_connection = self.__set_T_connection()
                 chamber.add(T_connection.shift(start).rotate(about_point=T_connection[0].get_start(), angle=angle))
             # connection for center pressure
             elif connection[0] != connection[1] and len(connection) == 3: 
@@ -140,33 +161,24 @@ class Pneumatic_valve_5_2():
         #|  5   1   3  |
         #|  |   |   |  |
         #|-------------|
-        
-        x, y = ORIGIN, ORIGIN
-        angle = 0
-        if connection == 1:
-            x, y = ORIGIN, DOWN/2
-        elif connection == 2:
-            x, y = RIGHT/4, UP/2
-            angle = pi
-        elif connection == 3:
-            x, y = RIGHT/4, DOWN/2
-        elif connection == 4:
-            x, y = LEFT/4, UP/2
-            angle = pi
-        elif connection == 5:
-            x, y = LEFT/4, DOWN/2
+
+        x, y = self.IN_OUT_positions[connection-1]
+        angle = self.IN_OUT_angles[connection-1]
             
         return (x+y)*self.h, angle
     
     # ----------------------------------------------------------------------------------------------------------------------        
 
-    def set_T_connection(self):
+    def __set_T_connection(self):
         """
         Drawing the "T" connection
         """
+        h = self.h
+        stroke_width = 2*h
+
         T_connection = VGroup()
-        T_connection.add(Line(start=ORIGIN, end=2*self.k*UP, stroke_width=3, color=BLACK))
-        T_connection.add(Line(start=self.k*LEFT, end=self.k*RIGHT, stroke_width=3, color=BLACK).shift(T_connection[0].get_top()))
+        T_connection.add(Line(start=ORIGIN, end=2*self.k*UP, stroke_width=stroke_width, color=BLACK))
+        T_connection.add(Line(start=self.k*LEFT, end=self.k*RIGHT, stroke_width=stroke_width, color=BLACK).shift(T_connection[0].get_top()))
         return T_connection
     
     # ----------------------------------------------------------------------------------------------------------------------        
@@ -192,18 +204,6 @@ class Pneumatic_valve_5_2():
                                stroke_width=3, color=BLACK))
         return cp_connection
     
-    # ----------------------------------------------------------------------------------------------------------------------        
-
-    def dict_actuator(self):
-
-        dict_actuator = {"Coil" : 0,
-                         "Manual lever" : 1,
-                         "Push button" : 2,
-                         "Simple lever" : 3,
-                         "Roller lever" : 4,
-                         "Compression spring" : 5}
-        
-        return dict_actuator
     
     # ----------------------------------------------------------------------------------------------------------------------
 
@@ -223,13 +223,15 @@ class Pneumatic_valve_5_2():
         elif n_type == 1: # lever
             actuator = vact.manual_actuator(position=position, height=h, position_side=position_side, actuator_type=0)
         elif n_type == 2: # push button
-            actuator = vact.manual_actuator(position=position, height=h, position_side=position_side, actuator_type=1)
+            actuator = vact.manual_actuator(position=position, height=h, position_side=position_side, actuator_type=1, actuated=self.actuated)
         elif n_type == 3: # simple lever
-            actuator = vact.meccanic_actuator(position=position, height=h, position_side=position_side, actuator_type=0)
+            actuator = vact.mechanic_actuator(position=position, height=h, position_side=position_side, actuator_type=0)
         elif n_type == 4: # roller lever
-            actuator = vact.meccanic_actuator(position=position, height=h, position_side=position_side, actuator_type=1)
+            actuator = vact.mechanic_actuator(position=position, height=h, position_side=position_side, actuator_type=1, actuated=self.actuated)
         elif n_type == 5: # spring
-            actuator = vact.meccanic_actuator(position=position, height=h, position_side=position_side, actuator_type=2)
+            actuator = vact.mechanic_actuator(position=position, height=h, position_side=position_side, actuator_type=2, actuated=self.actuated)
+        elif n_type == 6: # pneumatic signal
+            actuator = vact.pneumatic_actuator(position=position, height=h, position_side=position_side, actuator_type=0, actuated=self.actuated)    
         else:
             actuator = VGroup() # empty choice
 
@@ -237,10 +239,10 @@ class Pneumatic_valve_5_2():
     
     # ----------------------------------------------------------------------------------------------------------------------        
 
-    def slide_valve(self, motion_direction=RIGHT):
+    def slide_valve(self, motion_direction=RIGHT, run_time=1):
         """
         Procedure that animate the cylinder movement
-        side: indicates in which side is the translation
+        motion_direction: direction of movement (left/right)
         """
 
         # initialization
@@ -250,39 +252,18 @@ class Pneumatic_valve_5_2():
 
         functions = []
         
-        functions.append(*self.__move_actuator(self.left_actuator, left_actuator_choice, motion_direction))
-        functions.append(*self.__move_actuator(self.right_actuator, right_actuator_choice, motion_direction))
+        # move only the actuators
+        functions.append(*self.__move_actuator(self.left_actuator, left_actuator_choice, motion_direction, run_time=run_time))
+        functions.append(*self.__move_actuator(self.right_actuator, right_actuator_choice, motion_direction, run_time=run_time))
             
         # move only the valves except the actuators
-        functions.append(self.valve[1:-1].animate().shift(w*motion_direction))
+        functions.append(self.valve[1:-1].animate(run_time=run_time).shift(w*motion_direction))
         
         return functions
     
     # ----------------------------------------------------------------------------------------------------------------------
 
-    def __move_spring(self, actuator, motion_direction):
-        """
-        Procedure that define the compression and movement of the spring
-        actuator: right or left actuator spring
-        motion_direction: the direction of spring during tha translation
-        """
-       
-        # initialization
-        w = self.w
-        # k indicate the way of motion and compression respect to the position
-        k = motion_direction[0]*actuator.position[0]
-        
-        len = actuator.spring.height
-        d_coil = actuator.spring.d_coil
-        
-        # calculate the compression factor with the original length (height) of the spring
-        compression = k*(w+4*d_coil)/len
-        
-        return actuator.set_spring_compression(perc_comp=compression)
-    
-    # ----------------------------------------------------------------------------------------------------------------------
-
-    def __move_actuator(self, actuator, actuator_choice, motion_direction):
+    def __move_actuator(self, actuator, actuator_choice, motion_direction, run_time=1):
         """
         Procedure that collects the movement of the actuators during the valve shifting
         actuator: actuator class
@@ -303,12 +284,16 @@ class Pneumatic_valve_5_2():
             pos = -1 # right
 
         # select the actuator in order to show the correct movement (translation compression, etc etc...)
-        if dict_act[actuator_choice] == 5: # Compression spring
-            functions.append(self.__move_spring(actuator, w*motion_direction))
-        elif dict_act[actuator_choice] == 2: # Push button
+        if dict_act[actuator_choice] == 2: # Push button
             functions.append(actuator.set_push_button_compression(motion_direction=motion_direction))
+        elif dict_act[actuator_choice] == 4: # Roller lever
+            functions.append(actuator.set_roller_lever_compression(motion_direction=motion_direction, run_time=run_time))
+        elif dict_act[actuator_choice] == 5: # Compression spring
+            functions.append(actuator.set_spring_compression(motion_direction=motion_direction, run_time=run_time))
+        elif dict_act[actuator_choice] == 6: # Pneumatic signal
+            functions.append(actuator.set_pneumatic_signal_compression(motion_direction=motion_direction, run_time=run_time))
         else: # translation for the other actuators
-            functions.append(self.valve[pos].animate().shift(w*motion_direction))
+            functions.append(self.valve[pos].animate(run_time=run_time).shift(w*motion_direction))
 
         return functions
     
@@ -355,11 +340,11 @@ class Pneumatic_valve_5_3(Pneumatic_valve_5_2):
     """
 
     def __init__(self, height=2, center_selection=0, left_actuator_choice="Coil", right_actuator_choice="Compression spring", 
-                 visible_connections=False, **kwargs):
+                 visible_connections=False, actuated=False, **kwargs):
         
         # initialization
         super().__init__(height=height, left_actuator_choice=left_actuator_choice, right_actuator_choice=right_actuator_choice, 
-                         visible_connections=visible_connections)
+                         visible_connections=visible_connections, actuated=actuated)
         
         h = self.h
         
@@ -381,13 +366,38 @@ class Pneumatic_valve_5_3(Pneumatic_valve_5_2):
         self.valve.insert(2, self.central_chamber)
 
 
-
+# ======================================================================================================================
 
     
+class Pneumatic_valve_3_2(Pneumatic_valve_5_2):
+    """
+    Pneumatic valve with double chamber and 3 input/output for chamber
+    """
+
+    def __init__(self, height=2, left_actuator_choice="Coil", right_actuator_choice="Compression spring", 
+                 visible_connections=False, actuated=False, **kwargs):
+        # initialization
+        super().__init__(height=height, left_actuator_choice=left_actuator_choice, right_actuator_choice=right_actuator_choice, 
+                         visible_connections=visible_connections, actuated=actuated)
+        
+        # postions and angles of each input/output of the pneumatic chamber
+        self.IN_OUT_positions = ((LEFT/4, DOWN/2), (LEFT/4, UP/2), (RIGHT/4, DOWN/2))
+        self.IN_OUT_angles = (0, 0, 0)
+
+        self.valve = VGroup()
+        
+        # initialization left valve chamber
+        self.left_chamber = self.set_chamber(connections=((1,2), (3,3)), visible_connections=visible_connections)
+        self.left_chamber.shift(self.w/2*LEFT)
+
+        # initialization right valve chamber
+        self.right_chamber = self.set_chamber(connections=((1,1), (2,3)), visible_connections=visible_connections)
+        self.right_chamber.shift(self.w/2*RIGHT)
+
+        self.valve.add(self.left_actuator.actuator, self.left_chamber, self.right_chamber, self.right_actuator.actuator)
 
 
-
-
+# ======================================================================================================================
 
 
                 

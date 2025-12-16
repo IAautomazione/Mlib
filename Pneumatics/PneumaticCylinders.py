@@ -1,6 +1,5 @@
 from manim import *
 import numpy as np
-from numpy import pi
 from Mlib.Graphics.Colors import *
 
 """
@@ -62,8 +61,13 @@ class Pneumatic_cylinder_double_acting():
         Create the external barrel of the cylinder
         """
 
+        # initialization
+        h = self.h
+        stroke_width = np.clip(h*2, 1, 4)
+
         barrel = VGroup()
-        barrel.add(RoundedRectangle(height=self.h, width=self.w, corner_radius=self.r, color=BLACK))
+        barrel.add(RoundedRectangle(height=self.h, width=self.w, corner_radius=self.r, 
+                                    stroke_width=stroke_width, color=BLACK))
         return barrel
 
 # ----------------------------------------------------------------------------------------------------------------------    
@@ -103,11 +107,11 @@ class Pneumatic_cylinder_double_acting():
 
         fittings = VGroup()
         # fitting 1
-        fittings.add(Rectangle(height=h, width=w, fill_opacity=1, color=GREY_B).next_to(self.barrel[0], 
+        fittings.add(Rectangle(height=h, width=w, fill_opacity=1, stroke_width=0, color=GREY_B).next_to(self.barrel[0], 
                                direction=UL, buff=0).shift(w_offset*RIGHT + h_offset))
         # fitting 2
-        fittings.add(Rectangle(height=h, width=w, fill_opacity=1, color=GREY_B).next_to(self.barrel[0], 
-                               direction=UR, buff=0).shift(w_offset*LEFT +h_offset))
+        fittings.add(Rectangle(height=h, width=w, fill_opacity=1,  stroke_width=0, color=GREY_B).next_to(self.barrel[0], 
+                               direction=UR,buff=0).shift(w_offset*LEFT +h_offset))
         return fittings
 
 # ----------------------------------------------------------------------------------------------------------------------    
@@ -119,15 +123,15 @@ class Pneumatic_cylinder_double_acting():
 
         air_area = VGroup()
         # left volume
-        air_area.add(self.make_area(LEFT).set_z_index(self.fittings.get_z() - 1))
+        air_area.add(self.__make_area(LEFT).set_z_index(self.rod_stem.get_z() - 1))
         # right volume
-        air_area.add(self.make_area(RIGHT).set_z_index(self.fittings.get_z() - 1))
+        air_area.add(self.__make_area(RIGHT).set_z_index(self.rod_stem.get_z() - 1))
 
         return air_area
 
 # ----------------------------------------------------------------------------------------------------------------------    
     
-    def make_area(self, side):
+    def __make_area(self, side):
         """
         Procedure to create the dynamic blue area that simulate air flow in the cylinder
         side: where the area must be create (right or left side)
@@ -173,16 +177,18 @@ class Pneumatic_cylinder_double_acting():
             # effective area
             area = Intersection(self.barrel[0], mask)
             area.set_fill(color, opacity=0.6).set_stroke(opacity=0)
+
             return area
 
         return always_redraw(updater)
 
 # ----------------------------------------------------------------------------------------------------------------------    
     
-    def open_close_cylinder(self, perc_stroke=0.75):
+    def open_close_cylinder(self, perc_stroke=0.75, run_time=2):
         """
         Actuation of linear movement of the cylinder
         perc_stroke: is the percentage of ideal stroke of linear movement
+        run_time: simulation time
         """
         
         vertical_stroke = UP*self.u[1]
@@ -190,8 +196,8 @@ class Pneumatic_cylinder_double_acting():
 
         # switch state position everytime the function is called
         self.opened_state = -self.opened_state
-
-        return self.rod_stem.animate().shift(self.opened_state*self.stroke*perc_stroke*(horizontal_stroke + vertical_stroke))
+        
+        return self.rod_stem.animate(run_time=run_time, rate_func=rate_functions.linear).shift(self.opened_state*self.stroke*perc_stroke*(horizontal_stroke + vertical_stroke))
     
 # ----------------------------------------------------------------------------------------------------------------------    
 
@@ -202,6 +208,22 @@ class Pneumatic_cylinder_double_acting():
         
         for i in range(2):
             self.fittings[i].shift((DOWN*self.u[0] + RIGHT*self.u[1])*(self.h + self.h_fitting + 2*self.h_offset))
+
+# ----------------------------------------------------------------------------------------------------------------------    
+
+    def cover_barrel(self, cover=False):
+        """
+        Cover the barrel chamber, the internal head piston is not visible whe cover is ste to True
+        cover: flag that set whether the internal barrel is visible or not
+        """
+
+        if cover:
+            self.barrel.add(self.barrel[0].copy())
+            self.barrel[-1].set_fill(opacity=1, color=GREY_D)
+            self.barrel[-1].set_z_index(self.rod_stem.z_index + 1)
+        # verify whether the cover is present before remove it
+        elif cover==False and len(self.barrel)>1: 
+            self.barrel[-1].remove()
 
 
 # ======================================================================================================================
